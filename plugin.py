@@ -165,7 +165,7 @@ class BasePlugin:
         # commandDimmer called: Office Dimmer, Command: Off, Level: 99, Hue:        <-- Turn off
         # commandDimmer called: Office Dimmer, Command: Set Level, Level: 47, Hue:  <-- Change slider
         # Appears that there is a single 'set' topic for both on/off and brightness
-        Domoticz.Log("commandDimmer called: "+cmdUnit.Name+", Command: "+Command+", Level: "+str(Level)+", Hue: "+str(Hue))
+        Domoticz.Debug("commandDimmer called: "+cmdUnit.Name+", Command: "+Command+", Level: "+str(Level)+", Hue: "+str(Hue))
 
         # Read the configuration for the detaila
         unitConfig = self.unitConfiguration(cmdUnit.Parent.DeviceID, cmdUnit.Unit)
@@ -183,6 +183,8 @@ class BasePlugin:
             maxBrightness = unitConfig["brightness_scale"] if ("brightness_scale" in unitConfig) else 99
             theBrightness = Level * (maxBrightness/99) if (Level * (maxBrightness/99) <= maxBrightness) else maxBrightness
             thePayload = str(int(theBrightness))
+            if ("brightness_command_topic" in unitConfig):  # On/Off and Brightness topics can be the same but use the specific one if it is available
+                theTopic = unitConfig["brightness_command_topic"]
         else:
             thePayload = Command
 
@@ -190,7 +192,7 @@ class BasePlugin:
         for mqttConn in self.mqttClients:
             if (self.mqttClients[mqttConn].Connected()):
                 messageDict = {"Verb":"PUBLISH", "QoS":1, "Topic":theTopic, "PacketIdentifier":1234, "Payload":thePayload}
-                Domoticz.Log("commandDimmer Publishing: "+str(messageDict))
+                Domoticz.Debug("commandDimmer Publishing: "+str(messageDict))
                 self.mqttClients[mqttConn].Send(messageDict)
             else:
                 Domoticz.Error("Client is not connected: "+mqttConn)
