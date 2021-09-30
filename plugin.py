@@ -90,31 +90,54 @@ class BasePlugin:
 		#	            {
 		#		            1:
 		#		            {
+		#			            "mapped_type": "scene_state_scene_001",
+		#           			"reported_type": "sensor",
 		#			            "state_topic": "zwave/5/38/0/currentValue",
 		#			            "command_topic": "zwave/5/38/0/targetValue/set",
 		#			            "on_command_type": "brightness"
 		#			            "payload_on": true,
 		#			            "payload_off": false
 		#		            }
+        #                   2:
+        #                   {
+        #                       ...
+        #                   }
 		#	            }
 		#	            "battery":
 		#	            {
 		#		            "state_topic": "zwave/5/38/0/level",
+        #                   "reported_type": "sensor",
+		#               	"mapped_type": "battery_level"
 		#	            }
 		#            }
 	    #        }
+        #   	"topics": 
+        #   	{
+		#           "zwave/3/91/0/scene/001": 
+		#           {
+		#	            "deviceID": "zwavejs2mqtt_0xe0779f52_node3",
+		#	            "unit": "1"
+		#           },
+		#           "zwave/3/128/0/level":
+		#           {
+		#	            "deviceID": "zwavejs2mqtt_0xe0779f52_node3",
+		#	            "mapped_type": "battery_level"
+		#           },
+        #       }
         #    }
         #
         self.pluginConfig = None
 
         #   Type mapping:
         self.typeMapping = {
+                    "any":                      {"type": "Contact", "update": self.updateContact },
+                    "dimmer":                   {"type": "Dimmer", "update": self.updateDimmer, "command": self.commandDimmer },
                     "electric_a_value":         {"type": "Current/Ampere", "update": self.updateCurrent },
                     "electric_v_value":         {"type": "Voltage", "update": self.updateVoltage },
                     "electric_w_value":         {"type": "Usage", "update": self.updateUsage },
                     "electric_kwh_value":       {"type": (113,0,0), "update": self.updatekWh },
+                    "home_security":            {"type": "Contact", "update": self.updateContact },
                     "rgb_dimmer":               {"type": (241,2,7), "update": self.updateColor, "command": self.commandColor },
-                    "switch":                   {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
                     "scene_state_scene_001":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_002":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_003":    {"type": "Push On", "update": self.updateScene },
@@ -123,8 +146,7 @@ class BasePlugin:
                     "scene_state_scene_006":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_007":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_008":    {"type": "Push On", "update": self.updateScene },
-                    "home_security":            {"type": "Contact", "update": self.updateContact },
-                    "any":                      {"type": "Contact", "update": self.updateContact }
+                    "switch":                   {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch }
                     }
 
         #   Special handling (device level)
@@ -137,6 +159,41 @@ class BasePlugin:
         # commandColor called: Lava Lamp_rgb_dimmer, Command: Set Level, Level: 29, Hue:
         # commandColor called: Lava Lamp_rgb_dimmer, Command: Set Color, Level: 45, Hue: {"b":113,"cw":0,"g":255,"m":3,"r":192,"t":0,"ww":0}
         Domoticz.Log("commandColor called: "+cmdUnit.Name+", Command: "+Command+", Level: "+str(Level)+", Hue: "+str(Hue))
+
+    def commandDimmer(self, cmdUnit, Command, Level, Hue):
+        # commandDimmer called: Office Dimmer, Command: On, Level: 0, Hue:          <-- turn on
+        # commandDimmer called: Office Dimmer, Command: Off, Level: 99, Hue:        <-- Turn off
+        # commandDimmer called: Office Dimmer, Command: Set Level, Level: 47, Hue:  <-- Change slider
+        # Appears that there is a single 'set' topic for both on/off and brightness
+        Domoticz.Log("commandDimmer called: "+cmdUnit.Name+", Command: "+Command+", Level: "+str(Level)+", Hue: "+str(Hue))
+
+        # Read the configuration for the detaila
+        unitConfig = self.unitConfiguration(cmdUnit.Parent.DeviceID, cmdUnit.Unit)
+        if (unitConfig == None): 
+            Domoticz.Error("Dimmer command failed for "+cmdUnit.Name+", unable to find configuration.")
+            return
+
+        if (not "command_topic" in unitConfig): 
+            Domoticz.Error("Dimmer command failed for "+cmdUnit.Name+", No command topic mapped.")
+            return
+        theTopic = unitConfig["command_topic"]
+
+        # Create the payload based on the command
+        if (Command == "Set Level"):
+            maxBrightness = unitConfig["brightness_scale"] if ("brightness_scale" in unitConfig) else 99
+            theBrightness = Level * (maxBrightness/99) if (Level * (maxBrightness/99) <= maxBrightness) else maxBrightness
+            thePayload = str(int(theBrightness))
+        else:
+            thePayload = Command
+
+        # Tell everyone!
+        for mqttConn in self.mqttClients:
+            if (self.mqttClients[mqttConn].Connected()):
+                messageDict = {"Verb":"PUBLISH", "QoS":1, "Topic":theTopic, "PacketIdentifier":1234, "Payload":thePayload}
+                Domoticz.Log("commandDimmer Publishing: "+str(messageDict))
+                self.mqttClients[mqttConn].Send(messageDict)
+            else:
+                Domoticz.Error("Client is not connected: "+mqttConn)
 
     def commandBinarySwitch(self, cmdUnit, Command, Level, Hue):
         # commandBinarySwitch called: Bedside Lamp_switch, Command: Off, Level: 0
@@ -161,7 +218,9 @@ class BasePlugin:
         # Tell everyone!
         for mqttConn in self.mqttClients:
             if (self.mqttClients[mqttConn].Connected()):
-                self.mqttClients[mqttConn].Send({"Verb":"PUBLISH", "QoS":1, "Topic":theTopic, "PacketIdentifier":1234, "Payload":thePayload})
+                messageDict = {"Verb":"PUBLISH", "QoS":1, "Topic":theTopic, "PacketIdentifier":1234, "Payload":thePayload}
+                Domoticz.Log("commandBinarySwitch Publishing: "+str(messageDict))
+                self.mqttClients[mqttConn].Send(messageDict)
             else:
                 Domoticz.Error("Client is not connected: "+mqttConn)
 
@@ -217,6 +276,35 @@ class BasePlugin:
             else:
                 unitObj.Touch()
             Domoticz.Debug("updatekWh: "+unitObj.Name+", Payload: "+str(jsonDict))
+
+    def updateDimmer(self, unitObj, jsonDict):
+        # nValue maps to:
+        #       0 - Off
+        #       1 - On (When dimmer is at max, shows 'On')
+        #       2 - When dimmer is not at min or max.
+        #       Unit 'LastLevel' is what controls the slider 
+        unitConfig = self.unitConfiguration(unitObj.Parent.DeviceID, unitObj.Unit)
+        if (unitConfig == None): 
+            Domoticz.Error("updateDimmer: Failed for "+unitObj.Name+", unable to find configuration.")
+            return
+
+        if ('value' in jsonDict):
+            maxBrightness = unitConfig["brightness_scale"] if ("brightness_scale" in unitConfig) else 99
+            oldnValue = unitObj.nValue
+            oldsValue = unitObj.sValue
+            oldlValue = unitObj.LastLevel
+            unitObj.nValue = 2 if (jsonDict['value'] > 0) else 0
+            if (jsonDict['value'] == maxBrightness):
+                unitObj.nValue = 1
+            unitObj.sValue = str(jsonDict['value'])
+            if (jsonDict['value'] > 0):
+                unitObj.LastLevel = jsonDict['value']
+
+            if (unitObj.nValue != oldnValue) or (unitObj.sValue != oldsValue) or (unitObj.LastLevel != oldlValue):
+                unitObj.Update(Log=True)
+            else:
+                unitObj.Touch()
+            Domoticz.Log("updateDimmer: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateBinarySwitch(self, unitObj, jsonDict):
         # nValue 0 - Off, 1 = On.  sValue can be updated but is ignored
@@ -561,9 +649,28 @@ class BasePlugin:
                     if (Connection.Address+":"+Connection.Port in self.mqttClients):
                         self.mqttClients.pop(Connection.Address+":"+Connection.Port,None)
             elif (Data["Verb"] == "SUBSCRIBE"):
-                Domoticz.Log("MQTT2ZWave Subscription")
+                # MQTT2ZWave Subscription, Payload: 
+                # {
+                # 'Verb': 'SUBSCRIBE', 
+                # 'PacketIdentifier': 48228, 
+                # 'Topics': [
+                #       {'Topic': 'zwave/+/+/+/+/set', 'QoS': 0}, 
+                #       {'Topic': 'zwave/+/+/+/+/+/set', 'QoS': 0}, 
+                #       {'Topic': 'homeassistant/status', 'QoS': 0}, 
+                #       {'Topic': 'zwave/_CLIENTS/ZWAVE_GATEWAY-zwavejs2mqtt/broadcast/#', 'QoS': 0}, 
+                #       {'Topic': 'zwave/_CLIENTS/ZWAVE_GATEWAY-zwavejs2mqtt/api/#', 'QoS': 0}, 
+                #       {'Topic': 'zwave/_CLIENTS/ZWAVE_GATEWAY-zwavejs2mqtt/multicast/#', 'QoS': 0}
+                #       ]
+                # }
+                #Domoticz.Log("MQTT2ZWave Subscription, Payload: "+str(Data))
+                Connection.Send({"Verb":"SUBACK", "PacketIdentifier":Data["PacketIdentifier"], "QoS":0 })
             elif (Data["Verb"] == "PINGREQ"):
                 Connection.Send({"Verb":"PINGRESP"})
+                Domoticz.Debug("Responded to PING: "+Data["Verb"])
+            elif (Data["Verb"] == "PUBACK"):
+                Domoticz.Debug("PUBACK received: "+str(Data))
+            else:
+                Domoticz.Error("Unhandled message type: "+str(Data))
         else:
             Domoticz.Error("onMessage: '"+Connection.Address+":"+Connection.Port+"' send data that was not a dictionary or no Verb was present")
             if (Connection.Address+":"+Connection.Port in self.mqttClients):
