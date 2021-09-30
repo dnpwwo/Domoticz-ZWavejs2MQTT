@@ -43,7 +43,7 @@ Under 'Settings'
   *  Topic type: ValueID topics
   *  Payload type: JSON Time-Value
   *  Enable 'Ignore location' ONLY
-*  'Home Assistant'
+* 'Home Assistant'
   *  Enable 'MQTT Discovery' ONLY
   *  Discovery prefix: domoticz
 
