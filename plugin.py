@@ -130,13 +130,13 @@ class BasePlugin:
 
         #   Type mapping:
         self.typeMapping = {
-                    "any":                      {"type": "Contact", "update": self.updateContact },
+                    "any":                      {"type": "Contact", "update": self.updateBinarySensor },
                     "dimmer":                   {"type": "Dimmer", "update": self.updateDimmer, "command": self.commandDimmer },
                     "electric_a_value":         {"type": "Current/Ampere", "update": self.updateCurrent },
-                    "electric_v_value":         {"type": "Voltage", "update": self.updateVoltage },
+                    "electric_v_value":         {"type": "Voltage", "update": self.updateSensor },
                     "electric_w_value":         {"type": "Usage", "update": self.updateUsage },
                     "electric_kwh_value":       {"type": (113,0,0), "update": self.updatekWh },
-                    "home_security":            {"type": "Contact", "update": self.updateContact },
+                    "home_security":            {"type": "Contact", "update": self.updateBinarySensor },
                     "rgb_dimmer":               {"type": (241,2,7), "update": self.updateColor, "command": self.commandColor },
                     "scene_state_scene_001":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_002":    {"type": "Push On", "update": self.updateScene },
@@ -146,13 +146,23 @@ class BasePlugin:
                     "scene_state_scene_006":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_007":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_008":    {"type": "Push On", "update": self.updateScene },
-                    "switch":                   {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch }
+                    "switch":                   {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
+
+                    "motion_sensor_status":     {"type": "Motion", "update": self.updateBinarySensor },
+                    "cover_status":             {"type": "Contact", "update": self.updateBinarySensor },
+                    "illuminance":              {"type": "Illumination", "update": self.updateSensor },
+                    "temperature_air":          {"type": "Temperature", "update": self.updateSensor },
+                    "humidity_air":             {"type": "Percentage", "update": self.updateSensor },
+                    "sun_ultraviolet":          {"type": "UV", "update": self.updateUltraviolet }
                     }
 
         #   Special handling (device level)
         self.specialHandling = {
             "battery_level": { "update": self.updateBattery }
             }
+
+        #   Don't even log some topics to make logging useful
+        self.completelyIgnore = "isLow,wakeUpInterval,controllerNodeId"
 
     def commandColor(self, cmdUnit, Command, Level, Hue):
         # commandColor called: Lava Lamp_rgb_dimmer, Command: Set Color, Level: 1, Hue: {"b":113,"cw":0,"g":255,"m":3,"r":192,"t":0,"ww":0}
@@ -244,7 +254,7 @@ class BasePlugin:
                 unitObj.Touch()
             Domoticz.Debug("updateCurrent: "+unitObj.Name+", Payload: "+str(jsonDict))
 
-    def updateVoltage(self, unitObj, jsonDict):
+    def updateSensor(self, unitObj, jsonDict):
         # Simply stored in sValue
         if ('value' in jsonDict):
             oldValue = unitObj.sValue
@@ -253,10 +263,10 @@ class BasePlugin:
                 unitObj.Update()
             else:
                 unitObj.Touch()
-            Domoticz.Debug("updateVoltage: "+unitObj.Name+", Payload: "+str(jsonDict))
+            Domoticz.Debug("updateSensor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateUsage(self, unitObj, jsonDict):
-        # Simply stored in sValue
+        # Stored in sValue to a minimum of 3 decimal places
         if ('value' in jsonDict):
             oldValue = unitObj.sValue
             unitObj.sValue = "{:.3f}".format(jsonDict['value'])
@@ -265,6 +275,17 @@ class BasePlugin:
             else:
                 unitObj.Touch()
             Domoticz.Debug("updateUsage: "+unitObj.Name+", Payload: "+str(jsonDict))
+
+    def updateUltraviolet(self, unitObj, jsonDict):
+        # Stored in sValue to a minimum of 3 decimal places
+        if ('value' in jsonDict):
+            oldValue = unitObj.sValue
+            unitObj.sValue = "{:.1f}".format(jsonDict['value'])+";0.0"
+            if (unitObj.sValue != oldValue):
+                unitObj.Update()
+            else:
+                unitObj.Touch()
+            Domoticz.Debug("updateUltraviolet: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updatekWh(self, unitObj, jsonDict):
         # sValue only.  '10180123'  KwH -> '10180.123'
@@ -360,16 +381,15 @@ class BasePlugin:
                 unitObj.Touch()
             Domoticz.Log("updateColor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
-
-    def updateContact(self, unitObj, jsonDict):
+    def updateBinarySensor(self, unitObj, jsonDict):
         # zwave/7/113/0/Home_Security/Sensor_status: b'{"time":1632470645111,"value":2}'
         # zwave/7/48/0/Any: b'{"time":1632470726665,"value":false}'
-        Domoticz.Log("updateContact: "+unitObj.Name+", Payload: "+str(jsonDict))
+        Domoticz.Log("updateBinarySensor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
         # Read the configuration for the detaila
         unitConfig = self.unitConfiguration(unitObj.Parent.DeviceID, unitObj.Unit)
         if (unitConfig == None): 
-            Domoticz.Error("updateContact: Failed for "+unitObj.Name+", unable to find configuration.")
+            Domoticz.Error("updateBinarySensor: Failed for "+unitObj.Name+", unable to find configuration.")
             return
 
         if ('value' in jsonDict):
@@ -380,9 +400,10 @@ class BasePlugin:
                 unitObj.Update(Log=True)
             else:
                 unitObj.Touch()
-            Domoticz.Debug("updateContact: "+unitObj.Name+", Payload: "+str(jsonDict))
+            Domoticz.Debug("updateBinarySensor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateNothing(self, unitObj, jsonDict):
+
         Domoticz.Log("updateNothing: "+unitObj.Name+", Payload: "+str(jsonDict))
 
 
@@ -412,7 +433,11 @@ class BasePlugin:
             jsonDict = json.loads(Payload)
 
             if (not Topic in self.pluginConfig["topics"]):
-                Domoticz.Log(Topic+" not found in Topics configuration.")
+                topicList = Topic.split('/')
+                if (self.completelyIgnore.find(topicList[len(topicList)-1]) == -1):
+                    Domoticz.Log(Topic+" not found in Topics configuration.")
+                else:
+                    Domoticz.Debug(Topic+" not found in Topics configuration.")
                 return
 
             # Short cut to the actual device details
@@ -449,7 +474,7 @@ class BasePlugin:
             else:
                 # Device level topic (such as battery)
                 theType = theTopic["mapped_type"]
-                Domoticz.Log("Device level topic: "+theType)
+                Domoticz.Debug("Device level topic: "+theType)
                 if (not theType in self.specialHandling):
                     Domoticz.Log("Unmapped message: "+theType+" '"+str(jsonDict)+"'")
                     return
@@ -686,6 +711,9 @@ class BasePlugin:
     def onHeartbeat(self):
         Domoticz.Debug("onHeartbeat called: "+str(self.counter))
 
+    def onDeviceRemoved(self, DeviceID, Unit):
+        Domoticz.Log("onDeviceRemoved called: "+str(DeviceID)+", "+str(Unit))
+
     def onCommand(self, DeviceID, Unit, Command, Level, Hue):
         Domoticz.Debug("onCommand called: "+DeviceID+"\\"+str(Unit)+", Command: "+Command)
 
@@ -719,6 +747,10 @@ def onStart():
 def onConnect(Connection, Status, Description):
     global _plugin
     _plugin.onConnect(Connection, Status, Description)
+
+def onDeviceRemoved(DeviceID, Unit):
+    global _plugin
+    _plugin.onDeviceRemoved(DeviceID, Unit)
 
 def onMessage(Connection, Data):
     global _plugin

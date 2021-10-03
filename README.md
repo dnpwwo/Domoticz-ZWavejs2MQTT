@@ -9,6 +9,8 @@ Allows a ZWavejs2MQTT instance to connect directly to Domoticz and handles Z-Wav
   * Binary sensors
   * Multilevel switches (Dimmers)
   * Power meters - kWh, W, A, V
+  * Motion sensors
+  * Temperatures, humidity, illumination and UV
   * Battery level
   * Scenes
 
