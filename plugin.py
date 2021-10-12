@@ -132,10 +132,11 @@ class BasePlugin:
         self.typeMapping = {
                     "any":                      {"type": "Contact", "update": self.updateBinarySensor },
                     "dimmer":                   {"type": "Dimmer", "update": self.updateDimmer, "command": self.commandDimmer },
-                    "electric_a_value":         {"type": "Current/Ampere", "update": self.updateCurrent },
-                    "electric_v_value":         {"type": "Voltage", "update": self.updateSensor },
-                    "electric_w_value":         {"type": "Usage", "update": self.updateUsage },
-                    "electric_kwh_value":       {"type": (113,0,0), "update": self.updatekWh },
+                    "electric_a_value":         {"type": "Current/Ampere", "defaultSvalue":"0;0.0;0.0", "update": self.updateCurrent },
+                    "electric_v_value":         {"type": "Voltage", "defaultSvalue":"0", "update": self.updateSensor },
+                    "electric_w_value":         {"type": "Usage", "defaultSvalue":"0.000", "update": self.updateUsage },
+                    "electric_kwh_value":       {"type": (113,0,0), "defaultSvalue":"0000", "update": self.updatekWh },
+                    "electricity_power":        {"type": "Usage", "defaultSvalue":"0.000", "update": self.updateUsage },
                     "home_security":            {"type": "Contact", "update": self.updateBinarySensor },
                     "rgb_dimmer":               {"type": (241,2,7), "update": self.updateColor, "command": self.commandColor },
                     "scene_state_scene_001":    {"type": "Push On", "update": self.updateScene },
@@ -147,6 +148,8 @@ class BasePlugin:
                     "scene_state_scene_007":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_008":    {"type": "Push On", "update": self.updateScene },
                     "switch":                   {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
+                    "switch_1":                 {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
+                    "switch_2":                 {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
 
                     "motion_sensor_status":     {"type": "Motion", "update": self.updateBinarySensor },
                     "cover_status":             {"type": "Contact", "update": self.updateBinarySensor },
@@ -162,13 +165,15 @@ class BasePlugin:
             }
 
         #   Don't even log some topics to make logging useful
-        self.completelyIgnore = "isLow,wakeUpInterval,controllerNodeId"
+        self.completelyIgnore = "isLow,wakeUpInterval,controllerNodeId,version,manufacturerId,productType,productId,libraryType,protocolVersion,firmwareVersions"
 
     def commandColor(self, cmdUnit, Command, Level, Hue):
         # commandColor called: Lava Lamp_rgb_dimmer, Command: Set Color, Level: 1, Hue: {"b":113,"cw":0,"g":255,"m":3,"r":192,"t":0,"ww":0}
         # commandColor called: Lava Lamp_rgb_dimmer, Command: Set Level, Level: 29, Hue:
         # commandColor called: Lava Lamp_rgb_dimmer, Command: Set Color, Level: 45, Hue: {"b":113,"cw":0,"g":255,"m":3,"r":192,"t":0,"ww":0}
         Domoticz.Log("commandColor called: "+cmdUnit.Name+", Command: "+Command+", Level: "+str(Level)+", Hue: "+str(Hue))
+
+        # self.publishChange(theTopic,thePayload)
 
     def commandDimmer(self, cmdUnit, Command, Level, Hue):
         # commandDimmer called: Office Dimmer, Command: On, Level: 0, Hue:          <-- turn on
@@ -198,14 +203,7 @@ class BasePlugin:
         else:
             thePayload = Command
 
-        # Tell everyone!
-        for mqttConn in self.mqttClients:
-            if (self.mqttClients[mqttConn].Connected()):
-                messageDict = {"Verb":"PUBLISH", "QoS":1, "Topic":theTopic, "PacketIdentifier":1234, "Payload":thePayload}
-                Domoticz.Debug("commandDimmer Publishing: "+str(messageDict))
-                self.mqttClients[mqttConn].Send(messageDict)
-            else:
-                Domoticz.Error("Client is not connected: "+mqttConn)
+        self.publishChange(theTopic,thePayload)
 
     def commandBinarySwitch(self, cmdUnit, Command, Level, Hue):
         # commandBinarySwitch called: Bedside Lamp_switch, Command: Off, Level: 0
@@ -227,14 +225,8 @@ class BasePlugin:
         else:
             thePayload = "{'value':"+str(unitConfig["payload_off"])+"}" if "payload_on" in unitConfig else "{'value':False}"
         Domoticz.Debug("commandBinarySwitch: Found topic: "+theTopic+", Payload is: "+thePayload)
-        # Tell everyone!
-        for mqttConn in self.mqttClients:
-            if (self.mqttClients[mqttConn].Connected()):
-                messageDict = {"Verb":"PUBLISH", "QoS":1, "Topic":theTopic, "PacketIdentifier":1234, "Payload":thePayload}
-                Domoticz.Log("commandBinarySwitch Publishing: "+str(messageDict))
-                self.mqttClients[mqttConn].Send(messageDict)
-            else:
-                Domoticz.Error("Client is not connected: "+mqttConn)
+
+        self.publishChange(theTopic,thePayload)
 
     def updateBattery(self, unitObj, jsonDict):
         if ('value' in jsonDict):
@@ -327,7 +319,7 @@ class BasePlugin:
                 unitObj.Update(Log=True)
             else:
                 unitObj.Touch()
-            Domoticz.Log("updateDimmer: "+unitObj.Name+", Payload: "+str(jsonDict))
+            Domoticz.Debug("updateDimmer: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateBinarySwitch(self, unitObj, jsonDict):
         # nValue 0 - Off, 1 = On.  sValue can be updated but is ignored
@@ -384,7 +376,7 @@ class BasePlugin:
     def updateBinarySensor(self, unitObj, jsonDict):
         # zwave/7/113/0/Home_Security/Sensor_status: b'{"time":1632470645111,"value":2}'
         # zwave/7/48/0/Any: b'{"time":1632470726665,"value":false}'
-        Domoticz.Log("updateBinarySensor: "+unitObj.Name+", Payload: "+str(jsonDict))
+        Domoticz.Debug("updateBinarySensor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
         # Read the configuration for the detaila
         unitConfig = self.unitConfiguration(unitObj.Parent.DeviceID, unitObj.Unit)
@@ -406,6 +398,15 @@ class BasePlugin:
 
         Domoticz.Log("updateNothing: "+unitObj.Name+", Payload: "+str(jsonDict))
 
+    def publishChange(self, topic, payload):
+        # Tell everyone!
+        for mqttConn in self.mqttClients:
+            if (self.mqttClients[mqttConn].Connected()):
+                messageDict = {"Verb":"PUBLISH", "QoS":1, "Topic":topic, "PacketIdentifier":1234, "Payload":payload}
+                Domoticz.Log("Publishing: "+str(messageDict)+", to "+mqttConn)
+                self.mqttClients[mqttConn].Send(messageDict)
+            else:
+                Domoticz.Error("Client is not connected: "+mqttConn)
 
     def unitConfiguration(self, deviceID, unitNum):
         # Sanity check data
@@ -571,7 +572,12 @@ class BasePlugin:
                 return
 
             name = jsonDict["name"]
+            # If there is Domoticz type name then use that in the name rather than the supplied one
+            if (name.find(valueDict["mapped_type"]) > -1) and (not isinstance(typeName, tuple)): 
+                name = name.replace("_"+topicList[3], " "+typeName)
+                name = name.replace(typeName+" "+typeName, typeName)
             description = mqttDict["manufacturer"]+" - "+mqttDict["model"]
+            sValue = self.typeMapping[topicList[3]]["defaultSvalue"] if "defaultSvalue" in self.typeMapping[topicList[3]] else ""
 
             if (not isinstance(typeName, tuple)): 
                 # New device: 'Lava Lamp_electric_kwh_value', DeviceID: 'zwavejs2mqtt_0xe0779f52_node6', Description: 'AEON Labs - Smart Switch 6 (ZW096)'
@@ -579,6 +585,7 @@ class BasePlugin:
             else:
                 mainType, subType, switchType = typeName
                 newUnit = Domoticz.Unit(Name=name, DeviceID=deviceID, Unit=int(unitNum), Type=mainType, Subtype=subType, Switchtype=switchType , Description=description)
+            newUnit.sValue = sValue
             newUnit.Create()
 
             Domoticz.Log("New created device: '"+name+"', DeviceID: '"+deviceID+"', Description: '"+description+"'")
@@ -713,6 +720,12 @@ class BasePlugin:
 
     def onDeviceRemoved(self, DeviceID, Unit):
         Domoticz.Log("onDeviceRemoved called: "+str(DeviceID)+", "+str(Unit))
+
+        # Remove from lookup
+
+        # Remove from device/unit list
+
+        # Was it the last Unit for the Device? Remove the Device?
 
     def onCommand(self, DeviceID, Unit, Command, Level, Hue):
         Domoticz.Debug("onCommand called: "+DeviceID+"\\"+str(Unit)+", Command: "+Command)
