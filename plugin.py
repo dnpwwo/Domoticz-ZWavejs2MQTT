@@ -132,10 +132,10 @@ class BasePlugin:
         self.typeMapping = {
                     "any":                      {"type": "Contact", "update": self.updateBinarySensor },
                     "dimmer":                   {"type": "Dimmer", "update": self.updateDimmer, "command": self.commandDimmer },
-                    "electric_a_value":         {"type": "Current/Ampere", "defaultSvalue":"0;0.0;0.0", "update": self.updateCurrent },
+                    "electric_a_value":         {"type": "Current/Ampere", "suffix":"Current", "defaultSvalue":"0;0.0;0.0", "update": self.updateCurrent },
                     "electric_v_value":         {"type": "Voltage", "defaultSvalue":"0", "update": self.updateSensor },
                     "electric_w_value":         {"type": "Usage", "defaultSvalue":"0.000", "update": self.updateUsage },
-                    "electric_kwh_value":       {"type": (113,0,0), "defaultSvalue":"0000", "update": self.updatekWh },
+                    "electric_kwh_value":       {"type": (113,0,0), "suffix":"Total", "defaultSvalue":"0000", "update": self.updatekWh },
                     "electricity_power":        {"type": "Usage", "defaultSvalue":"0.000", "update": self.updateUsage },
                     "home_security":            {"type": "Contact", "update": self.updateBinarySensor },
                     "rgb_dimmer":               {"type": (241,2,7), "update": self.updateColor, "command": self.commandColor },
@@ -148,10 +148,10 @@ class BasePlugin:
                     "scene_state_scene_007":    {"type": "Push On", "update": self.updateScene },
                     "scene_state_scene_008":    {"type": "Push On", "update": self.updateScene },
                     "switch":                   {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
-                    "switch_1":                 {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
-                    "switch_2":                 {"type": "Switch", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
+                    "switch_1":                 {"type": "Switch", "suffix":"Switch 1", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
+                    "switch_2":                 {"type": "Switch", "suffix":"Switch 1", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
 
-                    "motion_sensor_status":     {"type": "Motion", "update": self.updateBinarySensor },
+                    "motion_sensor_status":     {"type": "Motion", "suffix":"PIR", "update": self.updateBinarySensor },
                     "cover_status":             {"type": "Contact", "update": self.updateBinarySensor },
                     "illuminance":              {"type": "Illumination", "update": self.updateSensor },
                     "temperature_air":          {"type": "Temperature", "update": self.updateSensor },
@@ -573,10 +573,15 @@ class BasePlugin:
 
             name = jsonDict["name"]
             # If there is Domoticz type name then use that in the name rather than the supplied one
-            if (name.find(valueDict["mapped_type"]) > -1) and (not isinstance(typeName, tuple)): 
-                name = name.replace("_"+topicList[3], " "+typeName)
-                name = name.replace(typeName+" "+typeName, typeName)
+            if (name.find(valueDict["mapped_type"]) > -1): 
+                if (topicList[3] in self.typeMapping) and ("suffix" in self.typeMapping[topicList[3]]):
+                    name = name.replace("_"+topicList[3], " "+self.typeMapping[topicList[3]]["suffix"])
+                elif (not isinstance(typeName, tuple)): 
+                    name = name.replace("_"+topicList[3], " "+typeName)
+                    name = name.replace(typeName+" "+typeName, typeName)
+
             description = mqttDict["manufacturer"]+" - "+mqttDict["model"]
+
             sValue = self.typeMapping[topicList[3]]["defaultSvalue"] if "defaultSvalue" in self.typeMapping[topicList[3]] else ""
 
             if (not isinstance(typeName, tuple)): 
