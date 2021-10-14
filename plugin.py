@@ -575,7 +575,10 @@ class BasePlugin:
             # If there is Domoticz type name then use that in the name rather than the supplied one
             if (name.find(valueDict["mapped_type"]) > -1): 
                 if (topicList[3] in self.typeMapping) and ("suffix" in self.typeMapping[topicList[3]]):
-                    name = name.replace("_"+topicList[3], " "+self.typeMapping[topicList[3]]["suffix"])
+                    suffix = self.typeMapping[topicList[3]]["suffix"]
+                    name = name.replace("_"+topicList[3], " "+suffix)
+                    if (not isinstance(typeName, tuple)): 
+                        name = name.replace(typeName+" "+typeName, typeName)
                 elif (not isinstance(typeName, tuple)): 
                     name = name.replace("_"+topicList[3], " "+typeName)
                     name = name.replace(typeName+" "+typeName, typeName)
