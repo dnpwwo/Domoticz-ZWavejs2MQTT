@@ -228,6 +228,14 @@ class BasePlugin:
 
         self.publishChange(theTopic,thePayload)
 
+    def performUpdate(self, unitObj, updateRequired, forceLog=False):
+        if (updateRequired):
+            unitObj.Update(Log=forceLog)
+            if (unitObj.Used > 0): Domoticz.Log("'"+unitObj.Name+"' updated ("+str(unitObj.nValue)+", '"+unitObj.sValue+"')")
+        else:
+            unitObj.Touch()
+            if (unitObj.Used > 0): Domoticz.Log("'"+unitObj.Name+"' seen  ("+str(unitObj.nValue)+", '"+unitObj.sValue+"')")
+
     def updateBattery(self, unitObj, jsonDict):
         if ('value' in jsonDict):
             if (unitObj.BatteryLevel != jsonDict['value']):
@@ -240,10 +248,7 @@ class BasePlugin:
         if ('value' in jsonDict):
             oldValue = unitObj.sValue
             unitObj.sValue = str(jsonDict['value'])+';0.0;0.0'
-            if (unitObj.sValue != oldValue):
-                unitObj.Update()
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.sValue != oldValue))
             Domoticz.Debug("updateCurrent: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateSensor(self, unitObj, jsonDict):
@@ -251,10 +256,7 @@ class BasePlugin:
         if ('value' in jsonDict):
             oldValue = unitObj.sValue
             unitObj.sValue = str(jsonDict['value'])
-            if (unitObj.sValue != oldValue):
-                unitObj.Update()
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.sValue != oldValue))
             Domoticz.Debug("updateSensor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateUsage(self, unitObj, jsonDict):
@@ -262,10 +264,7 @@ class BasePlugin:
         if ('value' in jsonDict):
             oldValue = unitObj.sValue
             unitObj.sValue = "{:.3f}".format(jsonDict['value'])
-            if (unitObj.sValue != oldValue):
-                unitObj.Update()
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.sValue != oldValue))
             Domoticz.Debug("updateUsage: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateUltraviolet(self, unitObj, jsonDict):
@@ -273,10 +272,7 @@ class BasePlugin:
         if ('value' in jsonDict):
             oldValue = unitObj.sValue
             unitObj.sValue = "{:.1f}".format(jsonDict['value'])+";0.0"
-            if (unitObj.sValue != oldValue):
-                unitObj.Update()
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.sValue != oldValue))
             Domoticz.Debug("updateUltraviolet: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updatekWh(self, unitObj, jsonDict):
@@ -286,10 +282,7 @@ class BasePlugin:
             oldValue = unitObj.sValue
             jsonDict['value'] = "{:.3f}".format(jsonDict['value'])  # Force 3 trailing decimal places
             unitObj.sValue = str(jsonDict['value']).replace(".","") # Remove the decimal place (Domoticz will put it back in)
-            if (unitObj.sValue != oldValue):
-                unitObj.Update()
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.sValue != oldValue))
             Domoticz.Debug("updatekWh: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateDimmer(self, unitObj, jsonDict):
@@ -315,10 +308,7 @@ class BasePlugin:
             if (jsonDict['value'] > 0):
                 unitObj.LastLevel = jsonDict['value']
 
-            if (unitObj.nValue != oldnValue) or (unitObj.sValue != oldsValue) or (unitObj.LastLevel != oldlValue):
-                unitObj.Update(Log=True)
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, ((unitObj.nValue != oldnValue) or (unitObj.sValue != oldsValue) or (unitObj.LastLevel != oldlValue)), True)
             Domoticz.Debug("updateDimmer: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateBinarySwitch(self, unitObj, jsonDict):
@@ -333,10 +323,7 @@ class BasePlugin:
             oldValue = unitObj.nValue
             unitObj.sValue = "On" if (jsonDict['value'] == unitConfig["payload_on"]) else "Off"
             unitObj.nValue = 1 if (jsonDict['value'] == unitConfig["payload_on"]) else 0
-            if (unitObj.nValue != oldValue):
-                unitObj.Update(Log=True)
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.nValue != oldValue), True)
             Domoticz.Debug("updateBinarySwitch: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateScene(self, unitObj, jsonDict):
@@ -367,10 +354,7 @@ class BasePlugin:
             oldValue = unitObj.sValue
             unitObj.sValue = str(theValue)
             unitObj.nValue = int(15 * (theValue / 100))
-            if (unitObj.sValue != oldValue):
-                unitObj.Update(Log=True)
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.sValue != oldValue), True)
             Domoticz.Log("updateColor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateBinarySensor(self, unitObj, jsonDict):
@@ -388,14 +372,10 @@ class BasePlugin:
             oldValue = unitObj.nValue
             unitObj.sValue = "On" if (jsonDict['value'] == unitConfig["payload_on"]) else "Off"
             unitObj.nValue = 1 if (jsonDict['value'] == unitConfig["payload_on"]) else 0
-            if (unitObj.nValue != oldValue):
-                unitObj.Update(Log=True)
-            else:
-                unitObj.Touch()
+            self.performUpdate(unitObj, (unitObj.nValue != oldValue), True)
             Domoticz.Debug("updateBinarySensor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateNothing(self, unitObj, jsonDict):
-
         Domoticz.Log("updateNothing: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def publishChange(self, topic, payload):
