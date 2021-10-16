@@ -135,7 +135,7 @@ class BasePlugin:
                     "electric_a_value":         {"type": "Current/Ampere", "suffix":"Current", "defaultSvalue":"0;0.0;0.0", "update": self.updateCurrent },
                     "electric_v_value":         {"type": "Voltage", "defaultSvalue":"0", "update": self.updateSensor },
                     "electric_w_value":         {"type": "Usage", "defaultSvalue":"0.000", "update": self.updateUsage },
-                    "electric_kwh_value":       {"type": (113,0,0), "suffix":"Total", "defaultSvalue":"0000", "update": self.updatekWh },
+                    "electric_kwh_value":       {"type": (113,0,0), "suffix":"kWh", "defaultSvalue":"0000", "update": self.updatekWh },
                     "electricity_power":        {"type": "Usage", "defaultSvalue":"0.000", "update": self.updateUsage },
                     "home_security":            {"type": "Contact", "update": self.updateBinarySensor },
                     "rgb_dimmer":               {"type": (241,2,7), "suffix":"RGB Dimmer", "update": self.updateColor, "command": self.commandColor },
