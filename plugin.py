@@ -354,7 +354,7 @@ class BasePlugin:
             oldValue = unitObj.sValue
             unitObj.nValue = 1
             unitObj.sValue = str(theValue)
-            unitObj.LastLevel = int(15 * (theValue / 100))
+            unitObj.LastLevel = theValue
             self.performUpdate(unitObj, (unitObj.LastLevel != oldValue), True)
             Domoticz.Log("updateColor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
