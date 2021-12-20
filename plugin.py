@@ -82,47 +82,47 @@ class BasePlugin:
 
         # Configuration structure:
         #    {
-	    #        "devices":
-	    #        {
-		#            "zwavejs2mqtt_0xe0779f52_node3":
-		#            {
-		#	            "units":
-		#	            {
-		#		            1:
-		#		            {
-		#			            "mapped_type": "scene_state_scene_001",
-		#           			"reported_type": "sensor",
-		#			            "state_topic": "zwave/5/38/0/currentValue",
-		#			            "command_topic": "zwave/5/38/0/targetValue/set",
-		#			            "on_command_type": "brightness"
-		#			            "payload_on": true,
-		#			            "payload_off": false
-		#		            }
+        #        "devices":
+        #        {
+        #            "zwavejs2mqtt_0xe0779f52_node3":
+        #            {
+        #               "units":
+        #               {
+        #                   1:
+        #                   {
+        #                       "mapped_type": "scene_state_scene_001",
+        #                       "reported_type": "sensor",
+        #                       "state_topic": "zwave/5/38/0/currentValue",
+        #                       "command_topic": "zwave/5/38/0/targetValue/set",
+        #                       "on_command_type": "brightness"
+        #                       "payload_on": true,
+        #                       "payload_off": false
+        #                   }
         #                   2:
         #                   {
         #                       ...
         #                   }
-		#	            }
-		#	            "battery":
-		#	            {
-		#		            "state_topic": "zwave/5/38/0/level",
+        #               }
+        #               "battery":
+        #               {
+        #                   "state_topic": "zwave/5/38/0/level",
         #                   "reported_type": "sensor",
-		#               	"mapped_type": "battery_level"
-		#	            }
-		#            }
-	    #        }
-        #   	"topics": 
-        #   	{
-		#           "zwave/3/91/0/scene/001": 
-		#           {
-		#	            "deviceID": "zwavejs2mqtt_0xe0779f52_node3",
-		#	            "unit": "1"
-		#           },
-		#           "zwave/3/128/0/level":
-		#           {
-		#	            "deviceID": "zwavejs2mqtt_0xe0779f52_node3",
-		#	            "mapped_type": "battery_level"
-		#           },
+        #                   "mapped_type": "battery_level"
+        #               }
+        #            }
+        #        }
+        #       "topics": 
+        #       {
+        #           "zwave/3/91/0/scene/001": 
+        #           {
+        #               "deviceID": "zwavejs2mqtt_0xe0779f52_node3",
+        #               "unit": "1"
+        #           },
+        #           "zwave/3/128/0/level":
+        #           {
+        #               "deviceID": "zwavejs2mqtt_0xe0779f52_node3",
+        #               "mapped_type": "battery_level"
+        #           },
         #       }
         #    }
         #
@@ -349,7 +349,7 @@ class BasePlugin:
         if (isinstance(theValue, dict)):
             # Color update - {"b":165,"cw":0,"g":67,"m":3,"r":62,"t":0,"ww":0}
             oldValue = unitObj.Color
-			unitObj.Color = json.dumps({"b":jsonDict["blue"],"cw":0,"g":jsonDict["green"],"m":0,"r":jsonDict["red"],"t":0,"ww":0})
+            unitObj.Color = json.dumps({"b":jsonDict["blue"],"cw":0,"g":jsonDict["green"],"m":0,"r":jsonDict["red"],"t":0,"ww":0})
             self.performUpdate(unitObj, (unitObj.Color != oldValue), True)
             Domoticz.Log("updateColor: "+unitObj.Name+", Payload: "+str(jsonDict))
         else:
