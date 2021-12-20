@@ -152,7 +152,7 @@ class BasePlugin:
                     "switch_2":                 {"type": "Switch", "suffix":"Switch 2", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
 
                     "motion_sensor_status":     {"type": "Motion", "suffix":"PIR", "update": self.updateBinarySensor },
-                    "cover_status":             {"type": "Contact", "update": self.updateBinarySensor },
+                    "cover_status":             {"type": "Contact", "suffix":"Tamper", "update": self.updateBinarySensor },
                     "illuminance":              {"type": "Illumination", "suffix":"Lux", "update": self.updateSensor },
                     "temperature_air":          {"type": "Temperature", "update": self.updateSensor },
                     "humidity_air":             {"type": "Percentage", "update": self.updateSensor },
@@ -352,9 +352,10 @@ class BasePlugin:
         else:
             # Brightness update
             oldValue = unitObj.sValue
+            unitObj.nValue = 1
             unitObj.sValue = str(theValue)
-            unitObj.nValue = int(15 * (theValue / 100))
-            self.performUpdate(unitObj, (unitObj.sValue != oldValue), True)
+            unitObj.LastLevel = int(15 * (theValue / 100))
+            self.performUpdate(unitObj, (unitObj.LastLevel != oldValue), True)
             Domoticz.Log("updateColor: "+unitObj.Name+", Payload: "+str(jsonDict))
 
     def updateBinarySensor(self, unitObj, jsonDict):
