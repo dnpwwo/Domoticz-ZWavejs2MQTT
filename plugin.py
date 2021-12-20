@@ -349,7 +349,7 @@ class BasePlugin:
         if (isinstance(theValue, dict)):
             # Color update - {"b":165,"cw":0,"g":67,"m":3,"r":62,"t":0,"ww":0}
             oldValue = unitObj.Color
-            unitObj.Color = json.dumps({"b":jsonDict["blue"],"cw":0,"g":jsonDict["green"],"m":0,"r":jsonDict["red"],"t":0,"ww":0})
+            unitObj.Color = json.dumps({"b":theValue["blue"],"cw":0,"g":theValue["green"],"m":0,"r":theValue["red"],"t":0,"ww":0})
             self.performUpdate(unitObj, (unitObj.Color != oldValue), True)
             Domoticz.Log("updateColor: "+unitObj.Name+", Payload: "+str(jsonDict))
         else:
