@@ -3,7 +3,7 @@
 # Author: Dnpwwo, 2021
 #
 """
-<plugin key="Zwavejs2Mqtt" name="ZWavejs2Mqtt Direct Integration" author="dnpwwo" version="1.0.0" externallink="https://zwave-js.github.io/zwavejs2mqtt/#/">
+<plugin key="Zwavejs2Mqtt" name="ZWavejs2Mqtt Direct Integration" author="dnpwwo" version="1.0.1" externallink="https://zwave-js.github.io/zwavejs2mqtt/#/">
     <description>
         <h2>ZWavejs2Mqtt Direct Integration</h2><br/>
         <h3>Features</h3>
@@ -40,6 +40,9 @@
             <li>Retained discovery: False</li>
             <li>Manual discovery: False</li>
         </ul>
+        <h3>Zwavejs2Mqtt Node List / Debugging</h3>
+        Hit the &quot;8091&quot; port on the Domoticz server itself, e.g. <a href="http://vesta:8091/">http://myDomoticz:8091/</a>
+        <br/>
     </description>
     <params>
         <param field="Port" label="Connection" required="true" width="200px">
@@ -493,11 +496,12 @@ class BasePlugin:
                     Domoticz.Debug(jsonDict["state_topic"]+" is already mapped against "+deviceID+"\\"+unit)
                     return
 
-            # Device type is in the topc name
+            # Topic not handled so might need to create if we should handle it
+			# Device type is in the topic name
             # domoticz/sensor/Bedside_Lamp/electric_kwh_value/config
             topicList = Topic.split('/')
             if (len(topicList) != 5):
-                Domoticz.Error("Incorrect topic strcture, device not created: "+Topic)
+                Domoticz.Error("Incorrect topic structure, device not created: "+Topic)
                 return
             typeName = self.typeMapping[topicList[3]]["type"] if topicList[3] in self.typeMapping else None
 
