@@ -3,7 +3,7 @@
 # Author: Dnpwwo, 2021
 #
 """
-<plugin key="Zwavejs2Mqtt" name="ZWavejs2Mqtt Direct Integration" author="dnpwwo" version="1.0.1" externallink="https://zwave-js.github.io/zwavejs2mqtt/#/">
+<plugin key="Zwavejs2Mqtt" name="ZWavejs2Mqtt Direct Integration" author="dnpwwo" version="1.0.3" externallink="https://zwave-js.github.io/zwavejs2mqtt/#/">
     <description>
         <h2>ZWavejs2Mqtt Direct Integration</h2><br/>
         <h3>Features</h3>
@@ -155,6 +155,7 @@ class BasePlugin:
                     "switch_2":                 {"type": "Switch", "suffix":"Switch 2", "update": self.updateBinarySwitch, "command": self.commandBinarySwitch },
 
                     "motion_sensor_status":     {"type": "Motion", "suffix":"PIR", "update": self.updateBinarySensor },
+                    "door_state":               {"type": "Contact", "suffix":"Door State", "update": self.updateBinarySensor },
                     "cover_status":             {"type": "Contact", "suffix":"Tamper", "update": self.updateBinarySensor },
                     "illuminance":              {"type": "Illumination", "suffix":"Lux", "update": self.updateSensor },
                     "temperature_air":          {"type": "Temperature", "update": self.updateSensor },
@@ -339,8 +340,21 @@ class BasePlugin:
         #    2021-09-23 15:48:05.399: '{'time': 1632376083330, 'value': 2}'
         #    2021-09-23 15:48:05.585: '{'time': 1632376083529, 'value': 1}'
         #    2021-09-23 15:48:06.581: '{'time': 1632376084530}'
-        Domoticz.Log("updateScene: "+unitObj.Name+", Payload: "+str(jsonDict))
+        
+        oldValue = unitObj.nValue
+        
+        #Default to 'Off'
+        unitObj.sValue = "Off"
+        unitObj.nValue = 0
+        
+        # Look for 'On' events  (long touch is not supported yet)
+        if ('value' in jsonDict):
+            unitObj.sValue = "On"
+            unitObj.nValue = 1
 
+        self.performUpdate(unitObj, (unitObj.nValue != oldValue), True)
+        Domoticz.Debug("updateScene: "+unitObj.Name+", Payload: "+str(jsonDict))
+        
     def updateColor(self, unitObj, jsonDict):
         # updateColor: Bedside Lamp_rgb_dimmer, Payload: {'time': 1632621863751, 'value': {'red': 62, 'green': 67, 'blue': 165}}
         # updateColor: Bedside Lamp_rgb_dimmer, Payload: {'time': 1632622088122, 'value': 75}
