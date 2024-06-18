@@ -5,14 +5,17 @@ Allows a ZWavejs2MQTT instance to connect directly to Domoticz and handles Z-Wav
 
 * Domoticz acts as the MQTT broker so only Domoticz and ZWavejs2MQTT instances are required
 * Currently supported:
-  * Binary switches
+  * Battery level
   * Binary sensors
+  * Binary switches
+  * Cover status
+  * Door state
+  * Home security
+  * Motion sensors
   * Multilevel switches (Dimmers)
   * Power meters - kWh, W, A, V
-  * Motion sensors
-  * Temperatures, humidity, illumination and UV
-  * Battery level
   * Scenes
+  * Temperatures, humidity, illumination and UV
 
 ## Installation
 
